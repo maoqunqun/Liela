@@ -1,0 +1,123 @@
+---
+title: "Dec5"
+author: "liela"
+date: "12/5/2020"
+output: html_document
+---
+```{r}
+rm(list=ls())
+library(tidyverse)
+library(meta)
+library(metasens)
+library(readxl)
+data0 <- read_excel("EPI227_project_meditation.xlsx", 
+    sheet = "data0")
+```
+# stress
+```{r}
+stress <- data0 %>% filter(Stress==1)
+ma_stress <- metacont(Nt,S_P_t-S_B_t,S_P_t_SD,Nc,S_P_c-S_B_c,S_P_c_SD, data=stress,sm="SMD",studlab= paste(Author, Year))# random effect model
+# forest plot
+forest(ma_stress, comb.fixed=TRUE, xlab=
+         "Difference in mean response (intervention - control)
+units: maximum % fall in FEV1",
+       xlim=c(-2.5,2.5), xlab.pos=-20, smlab.pos=-20)
+# funnel
+funnel(ma_stress)
+radial(ma_stress)
+#tests for small-study effects
+metabias(ma_stress, method="mm")
+metabias(ma_stress, method="linreg")
+# trim-fill
+stress_trim_fill <- trimfill(ma_stress)
+funnel(stress_trim_fill)
+print(stress_trim_fill, digits=2, comb.random=TRUE)
+# copas
+stress_copas <- copas(ma_stress)
+stress_copas <- copas(ma_stress,gamma0.range = c(-0.9,2),gamma1.range = c(0,0.3))
+plot(stress_copas)
+# limit
+stress_limit <- limitmeta(ma_stress)
+print(stress_limit, digits=2)
+funnel(stress_limit)
+```
+# Mindfulness
+```{r}
+Mindfulness <- data0 %>% filter(Mindfulness==1)
+ma_Mindfulness <- metacont(Nt,M_P_t-M_B_t,M_P_t_SD,Nc,M_P_c-M_B_c,M_P_c_SD, data=Mindfulness,sm="SMD",studlab= paste(Author, Year))# random effect model
+# forest plot
+forest(ma_Mindfulness, comb.fixed=FALSE, xlab=
+         "Difference in mean response (intervention - control)
+units: maximum % fall in FEV1",
+       xlim=c(-2,2), xlab.pos=-20, smlab.pos=-20)
+# funnel
+funnel(ma_Mindfulness)
+radial(ma_Mindfulness)
+#tests for small-study effects
+metabias(ma_Mindfulness, method="mm")
+metabias(ma_Mindfulness, method="linreg")
+# trim-fill
+Mindfulness_trim_fill <- trimfill(ma_Mindfulness)
+funnel(Mindfulness_trim_fill)
+print(Mindfulness_trim_fill, digits=2, comb.random=TRUE)
+# copsa
+Mindfulness_copas <- copas(ma_Mindfulness)
+Mindfulness_copas <- copas(ma_Mindfulness,gamma0.range = c(-1.2,2),gamma1.range = c(0,0.5))
+plot(Mindfulness_copas)
+# limit
+Mindfulness_limit <- limitmeta(ma_Mindfulness)
+print(Mindfulness_limit, digits=2)
+funnel(Mindfulness_limit)
+```
+# Anxiety
+```{r}
+Anxiety <- data0 %>% filter(Anxiety==1)
+ma_Anxiety <- metacont(Nt,A_P_t-A_B_t,A_P_t_SD,Nc,A_P_c-A_B_c,A_P_c_SD, data=Anxiety,sm="SMD",studlab= paste(Author, Year))# random effect model
+# forest plot
+forest(ma_Anxiety, comb.random=FALSE, xlab=
+         "Difference in mean response (intervention - control)
+units: maximum % fall in FEV1",
+       xlim=c(-2,2), xlab.pos=-20, smlab.pos=-20)
+# funnel
+funnel(ma_Anxiety)
+radial(ma_Anxiety)
+#tests for small-study effects
+metabias(ma_Anxiety, method="mm")
+# trim-fill
+Anxiety_trim_fill <- trimfill(ma_Anxiety)
+funnel(Anxiety_trim_fill)
+print(Anxiety_trim_fill, digits=2, comb.random=TRUE)
+# copsa
+Anxiety_copas <- copas(ma_Anxiety)
+Anxiety_copas <- copas(ma_Anxiety,gamma0.range = c(-1.5,2),gamma1.range = c(0,0.5))
+plot(Anxiety_copas)
+# limit
+Anxiety_limit <- limitmeta(ma_Anxiety)
+print(Anxiety_limit, digits=2)
+funnel(Anxiety_limit)
+```
+# Depression
+```{r}
+Depression <- data0 %>% filter(Depression==1)
+ma_Depression <- metacont(Nt,D_P_t-D_B_t,D_P_t_SD,Nc,D_P_c-D_B_c,D_P_c_SD, data=Depression,sm="SMD",studlab= paste(Author, Year))# random effect model
+# forest plot
+forest(ma_Depression, comb.fixed=FALSE, xlab=
+         "Difference in mean response (intervention - control)
+units: maximum % fall in FEV1",
+       xlim=c(-2.5,2.5), xlab.pos=-20, smlab.pos=-20)
+# funnel
+funnel(ma_Depression)
+radial(ma_Depression)
+# trim-fill
+Depression_trim_fill <- trimfill(ma_Depression)
+funnel(Depression_trim_fill)
+print(Depression_trim_fill, digits=2, comb.fixed=TRUE)
+# copsa
+Depression_copas <- copas(ma_Depression)
+Depression_copas <- copas(ma_Depression,gamma0.range = c(-1.5,2),gamma1.range = c(0,0.5))
+plot(Depression_copas)
+# limit
+Depression_limit <- limitmeta(ma_Depression)
+print(Depression_limit, digits=2)
+funnel(Depression_limit)
+```
