@@ -1,0 +1,340 @@
+---
+title: "Assessing Treatment Effects of Class Type for 1st-grade students’ math scores in 79 Tennessee schools"
+output:
+  html_document:
+    df_print: paged
+    fig_caption: yes
+    number_sections: yes
+  pdf_document: default
+---
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 18px;
+  }
+
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE,message=FALSE,warning=FALSE)
+```
+
+
+***
+
+
+Team ID: 3
+
+Name (code): Kieran Zhou
+
+Name (code): Liela Meng
+
+Name (writing): Yunan Hou
+
+Name (writing): Zhen Li
+
+Auditor :
+
+Github repo link:https://github.com/maoqunqun/STA207winter2020-project1-team-3.git
+
+***
+
+#	Introduction
+This document contains the project report on assessing treatment effects of class type for first-grade students’ math scores in 79 Tennessee schools, including result tables, result figures and R session. This document is made with R markdown. The rmd file to generate this document is available on canvas.
+
+##	Background
+In this project, we study the dataset from a very influential randomized experiment, the Tennessee’s Student/Teacher Achievement Ratio study (Project STAR) which was conducted in the late 1980s to evaluate the effect of class size on test scores. According to the report of the State of Tennessee’s Student/Teacher Achievement Ratio (STAR) Project, the study has a within-school design and random assignment of both teachers and students to three different class types. The within-school design aims to eliminate the potentially large differences between schools, and the random assignment could eliminate the other effects on student individuals and among teacher individuals. In this report, we want to explore whether different class types have different influences on math scores in 1st-grade through the data. In order to achieve this goal, we use one-way analysis of variance model(ANOVA) to use mean as an estimator in each class type to examine whether the different class type Is a treatment that affects the 1st-grade students’ math scores.
+
+***
+
+# Statistical Analysis
+
+
+
+## Descriptive Analysis
+To do descriptive analysis, we will calculate and summarize statistics of 1st-grade students’ math scores( highest, lowest, average, median, and variance), generate the box plot of math scores in different class,  Also, we will draw pie chart to see that the proportion of students among the three class types.
+
+
+##	One-way ANOVA Analysis
+We choose the cell means model: 
+$Y_{i,j}=\mu_i+\varepsilon_{i,j}$, $\varepsilon_{i,j}\sim N(0,\sigma^2)$.
+
+$Y_{i,j}$ are observations.
+    $j=1,2,3,\dots$ is an index for experimental units, and
+    $i=1,2,3$ is an index for treatment groups.
+$\hat{\mu_i}$ is the mean of the observations for the $i_{th}$ treatment group, which we use to estimate $\mu_i$, where $\mu_1,\mu_2,\mu_3$ represent for population mean of "small" class, "regular" class, and "regualr+aide" class.
+
+We assume $\varepsilon_{i,j}$ follows a normal distribution with a mean of 0 and a variance of $\sigma^2$, to put it in another way, $\varepsilon_{i,j}$  are normally distributed zero-mean random errors.
+
+Initially, we will summarize the information of the model. Then, we will test whether class type does have an effect on students’ math scores. To further test whether different class type has a different effect, we use Bonferroni test and Tukey test for comparison. 
+
+
+
+##	Diagnostic analysis 
+We need to confirm follow assumptions to make sure the ANOVA model we achieve is reliable.So, first, we use the Bartlett test to test whether variances of populations are equal.
+Then, we use the histogram of residual to test whether the data follows a normal distribution. Also, we do normal Q-Q plot analysis to find whether residuals satisfy our assumption. 
+
+***
+
+# Results
+## Descriptive Analysis
+students in regular class, there are 2225 students who got aide. The pie chart (figure 1) shows that the number of students assigned to the small class is slightly less than the other two class type.
+The box plot (figure 2) indicates that if students are in the regular class, then whether they got aide does not necessarily affect their scores. However, different class size may affect students’ scores. From the box plot, we can also see that students from small class may have higher scores than those from regular class, and even have higher scores than those from regular class with aide. We can also check this result from summary statistics (table 1), where we can see that students from small class have higher minimum score (425 vs 404）, mean (538.67 vs 530.53)  and median (535 vs 529) score than regular class.
+
+```{r,include=F}
+library(AER)
+data("STAR")
+data0<-STAR[,c(5,13)]
+data<-na.omit(data0)
+Y1<-data[which(data$star1=="small"),]
+Y2<-data[which(data$star1=="regular"),]
+Y3<-data[which(data$star1=="regular+aide"),]
+```
+
+```{r,echo=FALSE}
+# factor: piechart
+label<-paste(c("regular","small","regular+aide"),round(100*table(data$star1)/6600),"%",sep=" ")
+pie(table(data$star1),label=label,col=c("orange","yellow","red"),main="Figure 1")
+```
+
+```{r,echo=F}
+boxplot(math1~star1,data=data,main="Figure 2")
+stripchart(math1~star1, vertical = TRUE, data = data, 
+    method = "jitter", add = TRUE, pch = 20,cex=0.1, col = 6)
+
+```
+
+```{r,include=F}
+# sum stat
+# function sumstat
+sumstat<-function(x){
+  if(is.null(dim(x))==T){
+    min=min(x)
+    max=max(x)
+    mean=mean(x)
+    median=median(x)
+    var=var(x)
+    list(min=min,max=max,mean=mean,median=median,var=var)
+  } else{
+    min<-NULL 
+    max<-NULL
+    mean<-NULL
+    median<-NULL
+    var<-NULL
+  for (i in 1:dim(x)[2]){
+    min[i]=min(x[,i])
+    max[i]=max(x[,i])
+    mean[i]=mean(x[,i])
+    median[i]=median(x[,i])
+    var[i]=var(x[,i])
+  }
+    list(min=min,max=max,mean=mean,median=median,var=var)
+  }
+}
+
+```
+
+```{r,echo=F}
+sumstat0<-sumstat(data$math1)
+sumstat1<-sumstat(Y1$math1)
+sumstat2<-sumstat(Y2$math1)
+sumstat3<-sumstat(Y3$math1)
+name<-c("min","max","mean","median","variance")
+sum<-c(sumstat0$min,sumstat0$max,sumstat0$mean,sumstat0$median,sumstat0$var)
+sum1<-c(sumstat1$min,sumstat1$max,sumstat1$mean,sumstat1$median,sumstat1$var)
+sum2<-c(sumstat2$min,sumstat2$max,sumstat2$mean,sumstat2$median,sumstat2$var)
+sum3<-c(sumstat3$min,sumstat3$max,sumstat3$mean,sumstat3$median,sumstat3$var)
+library(ggplot2)
+library(gridExtra)
+library(grid)
+table<-as.data.frame(rbind(sum,sum1,sum2,sum3))
+library(knitr)
+library(kableExtra)
+names(table)<-name
+kable_styling(kable(table,caption="Table 1"),bootstrap_options = "striped", full_width = F)
+#grid.table(table)
+
+```
+
+
+
+##	One-way ANOVA Analysis
+Given model: 
+$Y_{i,j}=\mu_i+\varepsilon_{i,j}$, $\varepsilon_{i,j}\sim N(0,\sigma^2)$.
+In order to test whether class type does have an effect on students’ math scores, we use following hypothesis testing:
+
+$H_0:\mu_1=\mu_2=\mu_3$ vs. $H_a:$ not all $\mu_i,i=1,2,3$ are equal.
+
+As for testing whether different class type has a different effect, we use Bonferroni test and Tukey test for comparison to test three hypothesis:
+$H_0:\mu_1 = \mu_2$ vs. $H_a\mu_1 \ne \mu_2$;
+
+$H_0:\mu_1 = \mu_3$ vs. $H_a\mu_1 \ne \mu_3$;
+
+$H_0:\mu_2 = \mu_3$ vs. $H_a\mu_2 \ne \mu_3$.
+
+In addition, we also interested in whether size of class (rather than type of class) has effect on students' math scores, and we run a Scheff test:
+$H_0:\mu_1=(\mu_2+\mu_3)/2$ vs. $H_a:\mu_1\ne (\mu_2+\mu_3)/2$.
+
+We think it is reasonable to have a one-way ANOVA model in this project since we assume randomization help us eliminate other effects on result.
+
+```{r}
+## one-way ANOVA
+
+ # H0: three class has equal mean
+fit.aov<-aov(math1~star1,data=data)
+summary(fit.aov)
+ # reject: three class not all equal
+
+Star1<-c(2,195075,97538,53.33,"<2e-16")
+Resid<-c(6597,12065523,1829," "," ")
+Total<-c(6599,12260598," "," "," ")
+table.aov<-as.data.frame(rbind(Star1,Resid,Total))
+names(table.aov)<-c("df","SS","MS","F-value","P-value")
+kable_styling(kable(table,caption="Table.AOV"),bootstrap_options = "striped", full_width = F)
+```
+
+Note:
+$small=1, reg=2, reg+aide=3$
+$n_1=1868, n_2=2507, n_3=2225$
+$N=6600$
+$\bar{Y_1}=538.6777,\bar{Y_2}=525.2744,\bar{Y_3}=529.6251$
+$SSE=12065523, df=6597, MSE=1829$
+$SST=12260598, df=6599$
+$SSTR=195075, df=2, MSTR=97538.$
+
+```{r}
+# contrast
+v=c(1,-0.5,-0.5)
+Ybar=c(538.6777,525.2744,529.6251)
+mse=1829
+#mean.tmp=fit.aov$coefficients
+ns=as.numeric(table(data$star1))
+diff.sd=sqrt(sum(v^2/ns)*mse)
+alpha=0.01
+
+# pairs
+comb.mat<-matrix(0,nrow=3,ncol=3)
+comb.mat[1,]=c(1,-1,0)
+comb.mat[2,]=c(1,0,-1)
+comb.mat[3,]=c(0,1,-1)
+diff = numeric(dim(comb.mat)[1])
+diff.sd2=diff
+mean.tmp=fit.aov$coefficients
+mean.tmp[1]=0
+for(i in 1:length(diff)){
+  diff[i]=sum(comb.mat[i,]*mean.tmp)
+  diff.sd2[i]=sqrt(sum(comb.mat[i,]^2/ns)*mse)
+}
+
+```
+
+
+```{r,include=F}
+# Bonferroni
+m=3
+B.stat<-qt(1-alpha/(2*m),fit.aov$df.residual)
+B.stat #2.3945
+```
+```{r,include=F}
+# Tukey
+T.stat<-qtukey(1-alpha,nmeans=length(fit.aov$coefficients),df=fit.aov$df.residual)/sqrt(2)
+T.stat #2.3442
+```
+```{r,include=F}
+# Scheffe
+S.stat=sqrt((length(fit.aov$coefficients)-1)*qf(1-alpha,length(fit.aov$coefficients)-1,fit.aov$df.residual))
+S.stat #2.4483
+```
+```{r}
+table.stats<-c(B.stat,T.stat,S.stat)
+names(table.stats)<-c('Bonferroni', 'Tukey', 'Scheffe')
+table.stats
+```
+```{r}
+
+# CI by Scheffe
+Lhat<-sum(v*Ybar)
+S.CI=c("1st confidence interval",Lhat+c(-1,1)*S.stat*diff.sd);
+names(S.CI)<-c(" ","lower","upper");
+S.CI=t(S.CI);
+kable_styling(kable(S.CI,caption="Scheffe.Confidence Interval"),bootstrap_options = "striped", full_width = F)
+#kable(S.CI,caption="Scheffe.Confidence Interval")
+```
+
+
+```{r}
+# CI by Bonferroni
+B.CI=matrix(0,nrow=3,ncol=2);
+for(i in 1:length(diff)){
+  B.CI[i,]=diff[i]+c(-1,1)*B.stat*diff.sd2[i];
+}
+B.CI<-as.data.frame(B.CI);
+names(B.CI)<-c("lower","upper");
+B.CI=t(B.CI);
+kable_styling(kable(B.CI,caption="Bonferroni.Confidence Interval"),bootstrap_options = "striped", full_width = F)
+```
+
+
+```{r}
+# CI by Tukey
+T.CI=matrix(0,nrow=3,ncol=2);
+for(i in 1:length(diff)){
+  T.CI[i,]=diff[i]+c(-1,1)*T.stat*diff.sd2[i];
+}
+T.CI<-as.data.frame(T.CI)
+names(T.CI)<-c("lower","upper")
+T.CI=t(T.CI)
+kable_styling(kable(T.CI,caption="Tuckey.Confidence Interval"),bootstrap_options = "striped", full_width = F)
+```
+
+
+##	Diagnostic analysis
+Bartlett test p-value:
+```{r,include=F}
+library(multcomp)
+test=bartlett.test(math1~star1,data=data)$p.value
+```
+```{r}
+test
+```
+For α=0.01, Bartlett test result of study data doesn't show significance. Thus, assumption 1 of same variance holds.
+
+The histogram of residuals: nearly normal distribution.
+```{r,echo=F}
+resid<-fit.aov$residuals
+hist(resid)
+```
+
+Q-Q plot of residuals: approximately normal.
+```{r,echo=F}
+plot(fit.aov,which=2) #approx. normal: assumption holds
+```
+
+From the histogram and Q-Q plot, we can see that residuals are approximately normally distributed, which supports our assumption 2.
+
+***
+
+#	Discussion 
+## Positive effect
+
+Both small classes and aide class have a positive impact on the performance of 1st-year students’ math scores, but compared to class size, the influence of aide is less significant.
+
+## Might not feasible in real-world
+
+Although the effect of the small class is better, changing all classes into small classes may not feasible when taking cost into consideration. For example, a small class will require more teachers and classrooms which schools in certain situations might be unable to afford. In this case, in order to achieve a trade-off between financial pressure and students’ performance, it is maybe better to add an aide teacher to the regular class to get better teaching results since there also exists a difference of 1st-year students’ math scores between classes with and without an aide.
+
+## Might violate Stable Unit Treatment Value Assumption
+
+The assumption of no spill-over effect might not hold. For example, small classes provide students with a better platform to communicate with others. In this case, students can help each other more frequently, which could be the reason to improve students’ grades. Therefore, this will violate the assumption of “Stable Unit Treatment Value Assumption”. Thus, we cannot say that there is a causal effect of class type to the performance of 1st-year students’ math scores. The independence of subjects can be tested in future studies.
+
+## Might violate Ignorability of Treatment Assignment Assumption
+
+The assumption of ignorability of treatment assignment also might not hold. The grade may also be affected by observation itself instead of the changing of the class type or the addition of aide. Since joining the project might create a sense of competition between schools, which can push students to study hard. Therefore the data collected in the experiment can be different from the real situation, resulting in the dataset not fully reflecting the causality.
+
+***
+
+# Session information
+```{r}
+print(sessionInfo(), local = FALSE)
+```
+
