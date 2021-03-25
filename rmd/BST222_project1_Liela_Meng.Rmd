@@ -1,0 +1,10 @@
+---
+title: "BST222_project1"
+author: "liela"
+date: "10/27/2020"
+output: html_document
+---
+```{r}
+melanoma<-read.csv("melanoma.csv")
+```
+
