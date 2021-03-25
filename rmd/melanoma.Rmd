@@ -1,0 +1,40 @@
+---
+title: "BST222_project1"
+author: "liela"
+date: "11/12/2020"
+output: html_document
+---
+```{r}
+library(MASS)
+library(survival)
+data(Melanoma)
+```
+#  Kaplan-Meier curve
+```{r}
+kmfit <- survfit(Surv(time, status == 1) ~ 1, data = Melanoma)
+summary(kmfit, times = seq(0, 6000, 500))
+summary(kmfit)
+#  Create a plot of our Kaplan-Meier curve along with 95% confidence interval
+plot(kmfit, ylab="Kaplan Meier estimate with 95% CI", xlab="time")
+```
+
+#separate Kaplan-Meier curves for males and females
+```{r}
+kmfit.bysex <- survfit(Surv(time, status == 1) ~ sex, data = Melanoma)
+#Kaplan-Meier curves, with separate colors by gender and a legend
+plot(kmfit.bysex, conf.int = TRUE, col = c("black", "red"), lty = 1:2,
+ylab="Kaplan Meier by sex with 95% CIs", xlab="time",
+legend.text = c("Female","Male"))
+#a log-rank test to test for a difference across the two group
+survdiff(Surv(time, status == 1) ~ sex, data = Melanoma)
+```
+
+# Cox regression
+```{r}
+coxfit <- coxph(Surv(time,status==1) ~ sex, data=Melanoma)
+summary(coxfit)
+# Cox model with an age adjustment
+coxfit.age <- coxph(Surv(time,status==1) ~ sex + age, data=Melanoma)
+summary(coxfit.age)
+```
+
