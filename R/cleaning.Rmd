@@ -1,0 +1,213 @@
+---
+title: "Data_clean_May5"
+author: "liela"
+date: "5/5/2021"
+output: html_document
+---
+```{r import data}
+rm(list=ls())
+library(readxl)
+library(tidyverse)
+library(dplyr)
+data0 <- read_excel("~/Dropbox/My Mac (Liela MacBook Pro)/Desktop/R/HCV/HCV_1Y_PostBPA_RFDataset_deiD_Raw.xlsx") %>% select(-`Sex_Binary (0F,1M)`, -`Trans_Binary`,-`LGBTQI_Binary`,-`Race_4Cat (0W,1B,2A,3O/M)`,-`Hispanic_Binary`,-Homeless_Binary,-HCV_VL_Binary,-Tobacco_hx_Binary,-Alcohol_hx_Binary,-Illicits_Binary,-IVDU_Binary,-`Insurance_4Cat (Medicare, Medicaid, Private, Uninsured/Self)`)
+```
+
+```{r checking}
+names(data0)
+unique(data0$`Gender Identity`)
+sum(is.na(data0$`Sex Binary`))
+data0 %>% select(Sex, `Gender Identity`) %>% filter(Sex=="Female") %>% filter(`Gender Identity` == "Queer")
+```
+
+```{r sex}
+data0 <- data0 %>% mutate(`Sex Binary` = recode(Sex,
+                                     Female = 0,
+                                     Male = 1)) 
+```
+```{r trans}
+library(proto)
+library(gsubfn)
+library(RSQLite)
+library(sqldf)
+data0 <-sqldf(
+  "SELECT *,
+  CASE WHEN Sex==`Gender Identity` THEN '0'
+  WHEN  `Sex`== 'Female' and `Gender Identity`== 'Male' THEN '1'
+  WHEN  `Sex`== 'Male' and `Gender Identity`== 'Female' THEN '1'
+  WHEN `Gender Identity` in ('Transgender Female / Male-to-Female' , 'Transgender Male / Female-to-Male','Gender Fluid') THEN '1'
+  WHEN `Sex`== 'Male' and `Gender Identity`== 'Queer' THEN '0'
+  WHEN `Sex`== 'Female' and `Gender Identity`== 'Queer' THEN '1'
+  ELSE 'NA'
+  END AS `Trans Binary`
+  FROM data0"
+)
+```
+```{r LQBTQI}
+data0 <- data0 %>% mutate(`LQBTQI Binary`= ifelse(`Sexual Orientation` %in% c("Straight (not lesbian or gay)"),0,
+             ifelse(`Sexual Orientation` %in% c("Bisexual","Lesbian or Gay","Pansexual","Queer","Asexual"), 1,NA))) 
+```
+```{r race}
+# unique(data0$Race)
+data0 <- data0 %>% mutate(`Race 4Cat`= ifelse(`Race` %in% c("White","Mexican American" ),0,
+                                     ifelse(`Race` %in% c("African American or Black"), 1,
+                                            ifelse(`Race` %in% c("Asian"), 2,
+                                                   ifelse(`Race` %in% c("999","Decline to State","Unavailable or unknown","Unable to respond"),NA,3))))) 
+```
+```{r hispanic}
+unique(data0$Ethnicity)
+data0 <- data0 %>% mutate(`Hispanic Binary`= ifelse(`Ethnicity` %in% c("Hispanic or Latino","Other Hispanic"),1,
+                                     ifelse(`Ethnicity` %in% c("Declined to state","Unknown","999"), NA, 0)))
+```
+```{r homeless}
+data0 <- data0 %>% mutate(`Homeless Binary`= ifelse(`Homeless` %in% c("N"),0,
+                                     ifelse(`Homeless` %in% c("Y"), 1,NA)))
+```
+```{r HCV VL}
+data0 <- data0 %>% mutate(`HCV VL Binary`= ifelse(`HCV Viral Load_ ED Visit 1` %in% c("Not Detected","Nonreactive","Not detected","<15"),0,
+                                                  ifelse(is.na(`HCV Viral Load_ ED Visit 1`),NA,1)))
+```
+```{r tobacco}
+# tob1: Tobacco User
+data0 <- data0 %>% mutate(`tob1`= ifelse(`Tobacco User` %in% c("Never","Passive" ),0,
+                                 ifelse(`Tobacco User` %in% c("Yes","Quit"), 1, NA)))
+table(data0$tob1)
+sum(is.na(data0$tob1))
+unique(data0$`Tobacco User`)
+# tob2: Tobacco per day/year
+data0 <- sqldf(
+  "SELECT *,
+  CASE WHEN `Tobacco Used Years` =='0' THEN '0'
+  WHEN `Tobacco Pack Per Day` == '0' THEN '0'
+  WHEN `Tobacco Pack Per Day` is not Null  THEN '1'
+  WHEN `Tobacco Used Years` is not Null THEN '1'
+  ELSE 'NA'
+  END AS `tob2`
+  FROM data0"
+)
+
+# tob3: 5 YNs
+data0 <- data0 %>% mutate(`tob3`= ifelse(`Cigarettes YN`=='Y'| `Pipes YN`=='Y'|`Cigars YN`=='Y'|`Snuff YN`=='Y'|`Chew YN`=='Y',1, 
+                                         ifelse(`Cigarettes YN`=='N'& `Pipes YN`=='N'&`Cigars YN`=='N'&`Snuff YN`=='N'&`Chew YN`=='N',0,NA)
+                                         ))
+
+# merge
+library(naniar)
+data0 <- data0 %>%
+  replace_with_na(replace = list( tob2= "NA", `Trans Binary`="NA")) %>% mutate(tob2=as.numeric(tob2),`Trans Binary`=as.numeric(`Trans Binary`))
+data0 <- data0 %>% mutate(`Tobacco hx Binary` = pmax(tob1,tob2,tob3,na.rm = T))
+# data0 %>% filter(is.na(`Tobacco hx Binary`)) %>% filter(!is.na(`Tobacco Comment`)) ------ 0 rows
+```
+```{r alcohol}
+# alco1: alcohol User
+data0 <- data0 %>% mutate(`alco1`= ifelse(`Alcohol User` %in% c("Never","No"),0,
+                                 ifelse(`Alcohol User` %in% c("Yes","Not Currently"), 1, NA)))
+# alco2: alcohol per week
+data0 <- sqldf(
+  "SELECT *,
+  CASE WHEN `Alcohol Oz Per Wk` =='0' THEN '0'
+  WHEN `Alcohol Oz Per Wk` is not Null  THEN '1'
+  ELSE 'NA'
+  END AS `alco2`
+  FROM data0"
+)
+data0 <- data0 %>%
+  replace_with_na(replace = list( alco2= "NA")) %>% mutate(alco2=as.numeric(alco2))
+data0 <- data0 %>% mutate(`Alcohol hx Binary` = pmax(alco1,alco2,na.rm = T))
+Alcohol_Comment <- data0 %>% filter(is.na(`Alcohol hx Binary`)) %>% filter(!is.na(`Alcohol Comment`)) %>% select(`Study ID`,`Alcohol hx Binary`,`Alcohol Comment`)
+# alco3: alcohol comment
+Alcohol_Comments <- sqldf(
+  "SELECT `Study ID`,
+  CASE WHEN `Study ID` in ('11606','4253','765','2854','14881','16701','9154','583') THEN 'NA'
+  WHEN `Study ID` in ('9069','10996','17274','632','19373','19683') THEN '0'
+  ELSE '1'
+  END AS `alco3`
+  FROM Alcohol_Comment"
+)
+# join
+data0<- full_join(data0, Alcohol_Comments) 
+data0 <- data0 %>%
+  replace_with_na(replace = list( alco3= "NA")) %>% mutate(alco3=as.numeric(alco3))
+data0 <- data0 %>% mutate(`Alcohol hx Binary` = pmax(alco1,alco2,alco3,na.rm = T))
+```
+```{r illicits}
+# drug1: user
+data0 <- sqldf(
+  "SELECT *,
+  CASE WHEN `Illicit Drug User` in('No','Never') THEN '0'
+  WHEN `Illicit Drug User` in('Yes','Not Currently') THEN '1'
+  ELSE 'NA'
+  END AS `drug1`
+  FROM data0"
+)
+ # drug2: freq
+data0 <- sqldf(
+  "SELECT *,
+  CASE WHEN `Illicit Drug Freq` == '0' THEN '0'
+  WHEN `Illicit Drug Freq` is not Null THEN '1'
+  ELSE 'NA'
+  END AS `drug2`
+  FROM data0"
+)
+data0 <- data0 %>%
+  replace_with_na(replace = list( drug1= "NA", drug2="NA")) %>% mutate(drug1=as.numeric(drug1),drug2=as.numeric(drug2))
+data0 <- data0 %>% mutate(`Illicits Binary` = pmax(drug1,drug2,na.rm = T))
+drug_comment <- data0 %>% filter(is.na(`Illicits Binary`)) %>% filter(!is.na(`Illicit Drug Comment`)) %>% select(`Study ID`,`Illicit Drug Comment`)
+# drug3: drug comment
+drug_comment <- sqldf(
+  "SELECT `Study ID`,
+  CASE WHEN `Study ID` in ('10612','5301','7631','14881','16701','9154','789','583','694','4253') THEN 'NA'
+  WHEN `Study ID` in ('9069','10996','4301','6913','6144','7693','15618','15654','19750','10768','6124','19683','10540','632','3355','17274') THEN '0'
+  ELSE '1'
+  END AS `drug3`
+  FROM drug_comment"
+)
+#join
+data0<- full_join(data0, drug_comment) 
+data0 <- data0 %>%
+  replace_with_na(replace = list( drug3= "NA")) %>% mutate(drug3=as.numeric(drug3))
+data0 <- data0 %>% mutate(`Illicits Binary` = pmax(drug1,drug2,drug3,na.rm = T))
+# add drug name available
+data0 %>% filter(is.na(`Illicits Binary`)) %>% filter(!is.na(`Drug Names`)) %>% select(`Study ID`,`Illicits Binary`,`Drug Names`)
+data0$`Illicits Binary`[data0$`Study ID` %in% c("9288",	"1062","12422","4312")] <- 1
+```
+```{r insurance}
+data0 <- sqldf(
+  "SELECT *,
+  CASE WHEN `Primary Payor` in('MEDICARE','CIGNA MEDICARE')  THEN 'Medicare'
+  WHEN `Primary Payor` is Null THEN 'NA'
+  WHEN `Primary Payor` in ('MEDICAID','STATE OF CALIFORNIA','NEVADA MEDICAID') THEN 'Medicaid'
+  WHEN `Primary Payor` LIKE '%GMC%' THEN 'Medicaid'
+  WHEN  `Primary Payor` in ('*Self-Pay')  THEN 'Uninsured/Self'
+  ELSE 'Private'
+  END AS `Insurance 4Cat`
+  FROM data0"
+)
+data0 <- data0 %>%
+  replace_with_na(replace = list( `Insurance 4Cat`= "NA")) 
+```
+
+```{r IVDU}
+# iv1: IV Drug User
+data0 <- data0 %>% dplyr::mutate(`iv1`= ifelse(`IV Drug User` %in% c("N"),0,
+                                 ifelse(`IV Drug User` %in% c("Y"), 1, NA)))
+# iv2: problem listlogic: subtract -> 0/1/NA
+library(stringr)
+iv_problem <- str_extract(data0$`Problem List`,"IVDA|IVDU|IV drug|intravenous") #str_subset
+iv_problem <- as.data.frame(iv_problem)
+data0 <- data0 %>% dplyr::bind_cols(iv_problem) %>% dplyr::mutate(iv2 = ifelse(is.na(iv_problem),NA,1))
+# iv3: comorbidities
+iv_como <- str_extract(data0$Comorbidities,"IVDA|IVDU|IV drug|intravenous")
+iv_como <- as.data.frame(iv_como)
+data0 <- data0 %>% dplyr::bind_cols(iv_como) %>% dplyr::mutate(iv3 = ifelse(is.na(iv_como),NA,1))
+# merge
+data0 <- data0 %>% dplyr::mutate(`IVDU Binary` = pmax(iv1,iv2,iv3,na.rm = T))
+```
+
+```{r export}
+names(data0)
+data <- data0 %>% select(-iv1,-iv2,-iv3,-drug1,-drug2,-drug3,-alco1,-alco2,-alco3,-tob1,-tob2,-tob3,-iv_problem,-iv_como)
+library(writexl)
+write_xlsx(x = data, path = "cleaned_data.xlsx", col_names = TRUE)
+```
+
+
